@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
+
+source "$PLUGIN_CORE_AVAILABLE_PATH/common/functions"
+source "$PLUGIN_CORE_AVAILABLE_PATH/config/functions"
+source "$PLUGIN_CORE_AVAILABLE_PATH/certs/functions"
+
+webhooks_create_root () {
+  #shellcheck disable=SC2034
+  declare desc="Ensure the db and socket directory exists"
+
+  local app="$1"
+  local webhooks_root="$DOKKU_ROOT/webhooks_plugin"
+
+  mkdir -p "$webhooks_root"
+}
