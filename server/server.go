@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -17,24 +19,34 @@ import (
 var jobStorage *bolt.DB
 var hookStorage *bolt.DB
 
-func main() {
-	r := chi.NewRouter()
-
+func init() {
 	var err error
 	jobStorage, err = bolt.Open("jobs.db", 0600, nil)
 	if err != nil {
-		fmt.Printf("error opening job storage: %v\n", err)
-		return
+		log.Fatalf("error opening job storage: %v\n", err)
 	}
-	defer jobStorage.Close()
 
 	hookStorage, err = bolt.Open("hooks.db", 0600, nil)
 	if err != nil {
-		fmt.Printf("error opening hook storage: %v\n", err)
-		return
+		log.Fatalf("error opening hook storage: %v\n", err)
 	}
+}
+
+func main() {
+	defer jobStorage.Close()
 	defer hookStorage.Close()
 
+	var wg sync.WaitGroup
+	go serve(&wg)
+	go listen(&wg)
+
+	wg.Wait()
+}
+
+func serve(wg *sync.WaitGroup) {
+	wg.Add(1)
+
+	r := chi.NewRouter()
 	r.Route("{appID}/{hookID}", func(r chi.Router) {
 		r.Use(validateSecret)
 		r.Use(hookContext)
@@ -43,6 +55,13 @@ func main() {
 	})
 
 	http.ListenAndServe(":3000", r)
+	wg.Done()
+}
+
+func listen(wg *sync.WaitGroup) {
+	wg.Add(1)
+	// TODO(happens): Connect to socket and listen to cli
+	wg.Done()
 }
 
 func validateSecret(next http.Handler) http.Handler {
@@ -93,12 +112,12 @@ func validateSecret(next http.Handler) http.Handler {
 	})
 }
 
-type hookContextKey struct {
-	key string
-}
+type ctxKey string
 
 type hook struct {
-	Name string
+	Name            string
+	CommandTemplate string
+	Args            []string
 }
 
 func hookContext(next http.Handler) http.Handler {
@@ -137,14 +156,14 @@ func hookContext(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), hookContextKey{key: "hook"}, found)
+		ctx := context.WithValue(r.Context(), ctxKey("hook"), found)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, ok := ctx.Value(hookContextKey{key: "hook"}).(*hook)
+	hook, ok := ctx.Value(ctxKey("hook")).(*hook)
 	if !ok {
 		// NOTE(happens): This should not be able to happen since
 		// the middleware will abort if there is no hook
@@ -153,6 +172,7 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO(happens): Do the thing
+	fmt.Printf("executing hook command: %v\n", hook)
 
 	w.WriteHeader(202)
 	w.Write([]byte(http.StatusText(202)))

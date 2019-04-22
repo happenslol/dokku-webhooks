@@ -7,7 +7,7 @@ Session.vim
 *~
 
 # executables
-/daemon.exe
-/daemon
-/server.exe
-/server
+/client/client.exe
+/client/client
+/server/server.exe
+/server/server
