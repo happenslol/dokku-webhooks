@@ -8,65 +8,43 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"sync"
-
-	"golang.org/x/crypto/bcrypt"
+	"os"
 
 	"github.com/boltdb/bolt"
+	dokku "github.com/dokku/dokku/plugins/common"
 	"github.com/go-chi/chi"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var jobStorage *bolt.DB
-var hookStorage *bolt.DB
-
-func init() {
-	var err error
-	jobStorage, err = bolt.Open("jobs.db", 0600, nil)
-	if err != nil {
-		log.Fatalf("error opening job storage: %v\n", err)
-	}
-
-	hookStorage, err = bolt.Open("hooks.db", 0600, nil)
-	if err != nil {
-		log.Fatalf("error opening hook storage: %v\n", err)
-	}
-}
-
-func main() {
-	defer jobStorage.Close()
-	defer hookStorage.Close()
-
-	var wg sync.WaitGroup
-	go serve(&wg)
-	go listen(&wg)
-
-	wg.Wait()
-}
-
-func serve(wg *sync.WaitGroup) {
+func serve() {
 	wg.Add(1)
 
 	r := chi.NewRouter()
-	r.Route("{appID}/{hookID}", func(r chi.Router) {
+	r.Route("{app}/{hook}", func(r chi.Router) {
+		r.Use(validateApp)
 		r.Use(validateSecret)
-		r.Use(hookContext)
+		r.Use(addHookContext)
 
 		r.Post("/", executeHook)
 	})
 
-	http.ListenAndServe(":3000", r)
-	wg.Done()
-}
+	port := os.Getenv("PORT")
+	if len(port) == 0 {
+		port = ":3000"
+	} else {
+		port = fmt.Sprintf(":%s", port)
+	}
 
-func listen(wg *sync.WaitGroup) {
-	wg.Add(1)
-	// TODO(happens): Connect to socket and listen to cli
+	log.Printf("listening on %s", port)
+	http.ListenAndServe(port, r)
 	wg.Done()
 }
 
 func validateSecret(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		appID := chi.URLParam(r, "appID")
+		ctx := r.Context()
+		app := ctx.Value("app").(string)
+
 		b, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
@@ -80,12 +58,12 @@ func validateSecret(next http.Handler) http.Handler {
 		var found string
 
 		err = hookStorage.View(func(tx *bolt.Tx) error {
-			secrets := tx.Bucket([]byte("secrets"))
+			secrets := tx.Bucket([]byte(secretsBucket))
 			if secrets == nil {
 				return errors.New("secrets bucket not found")
 			}
 
-			foundRaw := secrets.Get([]byte(appID))
+			foundRaw := secrets.Get([]byte(app))
 			if foundRaw == nil {
 				return errors.New("app secret not found")
 			}
@@ -112,31 +90,64 @@ func validateSecret(next http.Handler) http.Handler {
 	})
 }
 
-type ctxKey string
+type ctxKey struct {
+	string
+}
 
-type hook struct {
+type hookData struct {
 	Name            string
 	CommandTemplate string
 	Args            []string
 }
 
-func hookContext(next http.Handler) http.Handler {
+func validateApp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		appID := chi.URLParam(r, "appID")
-		hookID := chi.URLParam(r, "hookID")
+		app := chi.URLParam(r, "app")
 
-		var found hook
+		if err := dokku.VerifyAppName(app); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+
+		enabled := false
+		_ = hookStorage.View(func(tx *bolt.Tx) error {
+			apps := tx.Bucket([]byte(enabledBucket))
+			raw := apps.Get([]byte(app))
+			enabled = raw != nil && string(raw) == ""
+
+			return nil
+		})
+
+		if !enabled {
+			// TODO(happens): Explain how to enable hooks?
+			http.Error(w, "hooks are not enabled for this app", 400)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), ctxKey{"app"}, app)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func addHookContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		app := ctx.Value(ctxKey{"app"}).(string)
+		hook := chi.URLParam(r, "hook")
+
+		var found hookData
 		err := hookStorage.View(func(tx *bolt.Tx) error {
-			appBucketStr := fmt.Sprintf("app/%s", appID)
+			appBucketStr := fmt.Sprintf("app/%s", app)
 			appBucket := tx.Bucket([]byte(appBucketStr))
 			if appBucket == nil {
-				e := fmt.Sprintf("app %s does not have any hooks", appID)
+				e := fmt.Sprintf("app %s does not have any hooks", app)
 				return errors.New(e)
 			}
 
-			foundRaw := appBucket.Get([]byte(hookID))
+			foundRaw := appBucket.Get([]byte(hook))
 			if foundRaw == nil {
-				e := fmt.Sprintf("app %s has no hook named %s", appID, hookID)
+				e := fmt.Sprintf("app %s has no hook named %s", app, hook)
 				// TODO(happens): Print available hooks for app?
 				return errors.New(e)
 			}
@@ -156,14 +167,14 @@ func hookContext(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ctxKey("hook"), found)
+		ctx = context.WithValue(ctx, ctxKey{"hook"}, found)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, ok := ctx.Value(ctxKey("hook")).(*hook)
+	hook, ok := ctx.Value(ctxKey{"hook"}).(*hookData)
 	if !ok {
 		// NOTE(happens): This should not be able to happen since
 		// the middleware will abort if there is no hook
@@ -172,7 +183,7 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO(happens): Do the thing
-	fmt.Printf("executing hook command: %v\n", hook)
+	log.Printf("executing hook command: %v\n", hook)
 
 	w.WriteHeader(202)
 	w.Write([]byte(http.StatusText(202)))
