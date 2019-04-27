@@ -16,10 +16,13 @@ var wg sync.WaitGroup
 const (
 	secretsBucket = "secrets"
 	enabledBucket = "enabled"
-	storageDir    = "/storage"
+	storageDir    = "/app/storage"
 
-	dokkuSocket = "/storage/dokku.sock"
-	cmdSocket   = "/storage/cmd.sock"
+	dokkuSocket = "/app/storage/dokku.sock"
+	cmdSocket   = "/app/storage/cmd.sock"
+
+	jobStoragePath  = "/app/storage/jobs.db"
+	hookStoragePath = "/app/storage/hooks.db"
 )
 
 func main() {

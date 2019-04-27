@@ -13,6 +13,7 @@ case "$1" in
     webhooks:listen, Start the webhook server
     webhooks:auto-listen, Automatically keep the webhook server running
     webhooks:stop, Stop the webhook server
+    webhooks:secret <app> <secret>, Set the secret for an app
     webhooks:enable <app>, Enable all webhooks for an app
     webhooks:disable <app>, Disable all webhooks for an app
     webhooks:create <app> <name> <command>, Create a webhook
