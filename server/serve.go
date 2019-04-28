@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/boltdb/bolt"
 	dokku "github.com/dokku/dokku/plugins/common"
@@ -17,10 +19,8 @@ import (
 )
 
 func serve() {
-	wg.Add(1)
-
 	r := chi.NewRouter()
-	r.Route("{app}/{hook}", func(r chi.Router) {
+	r.Route("/{app}/{hook}", func(r chi.Router) {
 		r.Use(validateApp)
 		r.Use(validateSecret)
 		r.Use(addHookContext)
@@ -28,7 +28,7 @@ func serve() {
 		r.Post("/", executeHook)
 	})
 
-	r.Route("health", func(r chi.Router) {
+	r.Route("/health", func(r chi.Router) {
 		r.Get("/", reportHealth)
 	})
 
@@ -40,7 +40,14 @@ func serve() {
 	}
 
 	log.Printf("listening on %s", port)
-	http.ListenAndServe(port, r)
+
+	go func() { http.ListenAndServe(port, r) }()
+
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT)
+
+	<-sigc
+	log.Printf("server shutting down\n")
 	wg.Done()
 }
 

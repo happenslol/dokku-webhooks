@@ -30,9 +30,9 @@ func main() {
 		log.Fatalf("storage dir should exist: %s\n", storageDir)
 	}
 
-	if !dokku.FileExists(dokkuSocket) {
-		log.Fatalf("dokku daemon socket should exist: %s\n", dokkuSocket)
-	}
+	// if !dokku.FileExists(dokkuSocket) {
+	// 	log.Fatalf("dokku daemon socket should exist: %s\n", dokkuSocket)
+	// }
 
 	if _, err := os.Stat(cmdSocket); err == nil {
 		err = os.Remove(cmdSocket)
@@ -60,6 +60,8 @@ func main() {
 		tx.CreateBucketIfNotExists([]byte(enabledBucket))
 		return nil
 	})
+
+	wg.Add(2)
 
 	go serve()
 	go listen()

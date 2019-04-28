@@ -14,10 +14,13 @@ import (
 )
 
 func listen() {
-	wg.Add(1)
+	usr, _ := user.Lookup("root")
+	grp, _ := user.LookupGroup("root")
 
-	usr, _ := user.Lookup("dokku")
-	grp, _ := user.LookupGroup("dokku")
+	if usr == nil || grp == nil {
+		log.Fatal("user did not exist\n")
+	}
+
 	uid, _ := strconv.Atoi(usr.Uid)
 	gid, _ := strconv.Atoi(grp.Gid)
 

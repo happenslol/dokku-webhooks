@@ -19,7 +19,7 @@ subcommands: $(SUBCOMMANDS)
 
 build-server:
 	mkdir server-app && \
-	go build $(GO_ARGS) -o server-app/server server/*.go && \
+	CGO_ENABLED=0 GOOS=linux go build $(GO_ARGS) -o server-app/server server/*.go && \
 	cp server/Dockerfile server-app && \
 	cp server/Procfile server-app && \
 	cp server/CHECKS server-app
