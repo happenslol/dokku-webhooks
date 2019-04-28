@@ -9,6 +9,9 @@ github.com/dokku/dokku v0.15.5/go.mod h1:1ZyZbgNahwtPoIeWpzVYxb3vHDO4WxIgOt9/3OY
 github.com/go-chi/chi v4.0.2+incompatible h1:maB6vn6FqCxrpz4FqWdh4+lwpyZIQS7YEAUcHlgXVRs=
 github.com/go-chi/chi v4.0.2+incompatible/go.mod h1:eB3wogJHnLi3x/kFX2A+IbTBlXxmMeXJVKy9tTv1XzQ=
 github.com/happenslol/dokku-webhooks v0.0.0-20190428141958-d6405954c835 h1:CnQ5tpp02VY4dpx/i7MPNaRQKVx7TrA4o6ixEKmXHuo=
+github.com/happenslol/dokku-webhooks v0.0.0-20190428164136-2bc3eb8af55a h1:tog3a4zlemYU5F/d2hYLlXE2neEK7KiEhF6+umB05uU=
+github.com/happenslol/dokku-webhooks v0.0.0-20190428164136-2bc3eb8af55a/go.mod h1:SLTgoYD2UlrSIfmNtTfLP91/S/iotYtyLPdTvDyIEZU=
+github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190422171913-f8560614bab0 h1:061EwQCVvS7A6bBYtUZDNSvWFmnZqWBUC78CiqFHbfc=
 golang.org/x/crypto v0.0.0-20190422171913-f8560614bab0/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=

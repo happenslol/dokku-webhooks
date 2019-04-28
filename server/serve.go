@@ -28,6 +28,10 @@ func serve() {
 		r.Post("/", executeHook)
 	})
 
+	r.Route("health", func(r chi.Router) {
+		r.Get("/", reportHealth)
+	})
+
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
 		port = ":3000"
@@ -187,4 +191,9 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(202)
 	w.Write([]byte(http.StatusText(202)))
+}
+
+func reportHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte("up"))
 }

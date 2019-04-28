@@ -1,7 +1,6 @@
 FROM alpine
 
 RUN mkdir /app && mkdir /app/storage
+ADD . /app
 WORKDIR /app
-
-COPY server .
-CMD ["./server"]
+CMD [ "/app/server" ]

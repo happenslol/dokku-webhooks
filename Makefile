@@ -10,17 +10,19 @@ build-in-docker: clean
 		$(BUILD_IMAGE) \
 		bash -c "GO111MODULE=on GO_ARGS='$(GO_ARGS)' make -j4 build" || exit $$?
 
-build: commands subcommands server
+build: commands subcommands build-server
 
 commands: **/**/commands.go
 	go build $(GO_ARGS) -o commands src/commands/commands.go
 
 subcommands: $(SUBCOMMANDS)
 
-server:
+build-server:
 	mkdir server-app && \
-	go build $(GO_ARGS) -o server-app/server server && \
-	cp server/Dockerfile server-app/Dockerfile
+	go build $(GO_ARGS) -o server-app/server server/*.go && \
+	cp server/Dockerfile server-app && \
+	cp server/Procfile server-app && \
+	cp server/CHECKS server-app
 
 subcommands/%: src/subcommands/*/%.go
 	go build $(GO_ARGS) -o $@ $<

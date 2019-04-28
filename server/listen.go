@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/happenslol/dokku-webhooks/common"
+	webhooks "github.com/happenslol/dokku-webhooks"
 )
 
 func listen() {
@@ -64,7 +64,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 	defer c.Close()
 	de := json.NewDecoder(c)
 
-	var cmd common.Cmd
+	var cmd webhooks.Cmd
 	if err := de.Decode(&cmd); err != nil {
 		log.Printf("unable to decode message: %v\n", err)
 		return
@@ -73,18 +73,17 @@ func handleClient(c net.Conn, done chan<- bool) {
 	log.Printf("received command: %v\n", cmd)
 
 	switch cmd.T {
-	case common.CmdPing:
-		var res common.Response
+	case webhooks.CmdPing:
+		var res webhooks.Response
 		sendEncoded(c, res)
-	case common.CmdList:
-	case common.CmdShowApp:
-	case common.CmdEnableApp:
-	case common.CmdDisableApp:
-	case common.CmdCreate:
-	case common.CmdDelete:
-	case common.CmdTrigger:
-	case common.CmdLogs:
-	case common.CmdQuit:
+	case webhooks.CmdShowApp:
+	case webhooks.CmdEnableApp:
+	case webhooks.CmdDisableApp:
+	case webhooks.CmdCreate:
+	case webhooks.CmdDelete:
+	case webhooks.CmdTrigger:
+	case webhooks.CmdLogs:
+	case webhooks.CmdQuit:
 		done <- true
 	}
 }
@@ -100,7 +99,7 @@ func acceptIncoming(sock net.Listener, cons chan<- net.Conn) {
 	}
 }
 
-func sendEncoded(c net.Conn, msg common.Response) {
+func sendEncoded(c net.Conn, msg webhooks.Response) {
 	encoded, _ := json.Marshal(msg)
 	c.Write(encoded)
 }
