@@ -6,8 +6,8 @@ Session.vim
 .netrwhist
 *~
 
-# executables
-/client/client.exe
-/client/client
-/server/server.exe
-/server/server
+/server-app
+/commands
+/subcommands
+
+

@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	webhooks.ExpectArgs(os.Args)
+	webhooks.ExpectArgs(os.Args[2:])
 	webhooks.CommandStop()
 }

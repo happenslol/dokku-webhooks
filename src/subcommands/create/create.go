@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	webhooks.ExpectArgs(os.Args, "app", "hook", "command")
-	app, hook, command := os.Args[0], os.Args[1], os.Args[2]
+	args := os.Args[2:]
+	webhooks.ExpectArgs(args, "app", "hook", "command")
+	app, hook, command := args[0], args[1], args[2]
 	webhooks.CommandCreate(app, hook, command)
 }

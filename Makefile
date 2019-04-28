@@ -8,7 +8,7 @@ build-in-docker: clean
 		-v $$PWD/../..:$(GO_REPO_ROOT) \
 		-w $(GO_REPO_ROOT)/plugins/webhooks \
 		$(BUILD_IMAGE) \
-		bash -c "GO_ARGS='$(GO_ARGS)' make -j4 build" || exit $$?
+		bash -c "GO111MODULE=on GO_ARGS='$(GO_ARGS)' make -j4 build" || exit $$?
 
 build: commands subcommands server
 
@@ -19,7 +19,7 @@ subcommands: $(SUBCOMMANDS)
 
 server:
 	mkdir server-app && \
-	go build $(GO_ARGS) -o server-app/server server/main.go && \
+	go build $(GO_ARGS) -o server-app/server server && \
 	cp server/Dockerfile server-app/Dockerfile
 
 subcommands/%: src/subcommands/*/%.go

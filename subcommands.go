@@ -5,7 +5,8 @@ import (
 )
 
 // CommandShow implements webhooks and webhooks:show
-func CommandShow(app string) {}
+func CommandShow(app string) {
+}
 
 // CommandCreate implements webhooks:create
 func CommandCreate(app, hook, command string) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -36,14 +35,13 @@ Additional commands:`
 )
 
 func main() {
-	flag.Usage = usage
-	flag.Parse()
+	cmd := os.Args[1]
+	args := os.Args[2:]
 
-	cmd := flag.Arg(0)
 	switch cmd {
 	case "webhooks", "webhooks:show":
-		webhooks.ExpectArgs(os.Args, "app")
-		app := os.Args[1]
+		webhooks.ExpectArgs(args, "app")
+		app := args[0]
 		webhooks.CommandShow(app)
 		// run command
 	case "webhooks:help":
