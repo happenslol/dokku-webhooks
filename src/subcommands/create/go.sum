@@ -4,8 +4,5 @@ github.com/codeskyblue/go-sh v0.0.0-20190412065543-76bd3d59ff27 h1:HHUr4P/aKh4qu
 github.com/codeskyblue/go-sh v0.0.0-20190412065543-76bd3d59ff27/go.mod h1:VQx0hjo2oUeQkQUET7wRwradO6f+fN5jzXgB/zROxxE=
 github.com/dokku/dokku v0.15.5 h1:whu7dReNwQnWorQ3ifEgDEFmgkR8+lzAyeXMlKinpLo=
 github.com/dokku/dokku v0.15.5/go.mod h1:1ZyZbgNahwtPoIeWpzVYxb3vHDO4WxIgOt9/3OYyzjs=
-github.com/happenslol/dokku-webhooks v0.0.0-20190427220558-7b44132fbbcd h1:Sa4vg6OcbYjsdchQmbOGF/R2VRzisxoC/3nCWyXChT4=
 github.com/happenslol/dokku-webhooks v0.0.0-20190428141000-b7287d36f08c h1:DXs+Tslp7jpqecyDTpjmAdNCWmGWPqx6xvkkjDlt3Yc=
 github.com/happenslol/dokku-webhooks v0.0.0-20190428141000-b7287d36f08c/go.mod h1:qzhH1WVmWo0rjT+Dj4+qbA2I7PPCgNqFklQYubmoRAc=
-github.com/ryanuber/columnize v2.1.0+incompatible h1:j1Wcmh8OrK4Q7GXY+V7SVSY8nUWQxHW5TkBe7YUl+2s=
-github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
