@@ -1,3 +1,12 @@
 package main
 
-func main() {}
+import (
+	"os"
+
+	webhooks "github.com/happenslol/dokku-webhooks"
+)
+
+func main() {
+	webhooks.ExpectArgs(os.Args[2:])
+	webhooks.CommandListen()
+}
