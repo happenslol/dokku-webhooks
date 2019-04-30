@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"os"
 	"os/signal"
@@ -12,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/boltdb/bolt"
+	"golang.org/x/crypto/bcrypt"
 
 	webhooks "github.com/happenslol/dokku-webhooks"
 )
@@ -90,7 +93,13 @@ func handleClient(c net.Conn, done chan<- bool) {
 	switch cmd.T {
 	case webhooks.CmdPing:
 		res.Content = "up"
+
+		sendEncoded(c, res)
+		return
+
 	case webhooks.CmdShowApp:
+		sendEncoded(c, res)
+		return
 
 	case webhooks.CmdEnableApp:
 		app := cmd.Args[0]
@@ -118,6 +127,9 @@ func handleClient(c net.Conn, done chan<- bool) {
 			return nil
 		})
 
+		sendEncoded(c, res)
+		return
+
 	case webhooks.CmdDisableApp:
 		app := cmd.Args[0]
 		// TODO(happens): Verify app
@@ -143,6 +155,9 @@ func handleClient(c net.Conn, done chan<- bool) {
 			res.Content = "app disabled"
 			return nil
 		})
+
+		sendEncoded(c, res)
+		return
 
 	case webhooks.CmdCreate:
 		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[3]
@@ -188,6 +203,9 @@ func handleClient(c net.Conn, done chan<- bool) {
 			return nil
 		})
 
+		sendEncoded(c, res)
+		return
+
 	case webhooks.CmdDelete:
 		app, hook := cmd.Args[0], cmd.Args[1]
 
@@ -218,17 +236,110 @@ func handleClient(c net.Conn, done chan<- bool) {
 			return nil
 		})
 
+		sendEncoded(c, res)
+		return
+
 	case webhooks.CmdSetSecret:
+		app, secret, forceStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
+		force := forceStr == "true"
+
+		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+			secrets := tx.Bucket([]byte(secretsBucket))
+
+			if !force && secrets.Get([]byte(app)) != nil {
+				res.Status = 1
+				res.Content = "secret is already set, please use `--force` if you want to overwrite it"
+				return nil
+			}
+
+			encrypted, err := bcrypt.GenerateFromPassword([]byte(secret), 10)
+			if err != nil {
+				res.Status = 1
+				res.Content = fmt.Sprintf("failed to encrypt secret: %v", err)
+				return nil
+			}
+
+			err = secrets.Put([]byte(app), []byte(encrypted))
+			if err != nil {
+				res.Status = 1
+				res.Content = fmt.Sprintf("failed to save secret: %v", err)
+				return nil
+			}
+
+			res.Content = fmt.Sprintf(
+				"set secret for %s: %s\n%s",
+				app, secret,
+				"you should save this somewhere, the plaintext can not be retrieved after this!",
+			)
+
+			return nil
+		})
+
+		sendEncoded(c, res)
+		return
+
 	case webhooks.CmdGenSecret:
-	case webhooks.CmdShowSecret:
+		app, forceStr, lengthStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
+		force := forceStr == "true"
+		length, err := strconv.Atoi(lengthStr)
+		if err != nil {
+			res.Status = 1
+			res.Content = fmt.Sprintf("requested secret length is not a number: %s", lengthStr)
+			sendEncoded(c, res)
+			return
+		}
+
+		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+			secrets := tx.Bucket([]byte(secretsBucket))
+
+			if !force && secrets.Get([]byte(app)) != nil {
+				res.Status = 1
+				res.Content = "secret is already set, please use `--force` if you want to overwrite it"
+				return nil
+			}
+
+			gen, err := genSecret(length)
+			if err != nil {
+				res.Status = 1
+				res.Content = fmt.Sprintf("failed to generate secret: %v", err)
+				return nil
+			}
+
+			encrypted, err := bcrypt.GenerateFromPassword([]byte(gen), 10)
+			if err != nil {
+				res.Status = 1
+				res.Content = fmt.Sprintf("failed to encrypt secret: %v", err)
+				return nil
+			}
+
+			err = secrets.Put([]byte(app), []byte(encrypted))
+			if err != nil {
+				res.Status = 1
+				res.Content = fmt.Sprintf("failed to save secret: %v", err)
+				return nil
+			}
+
+			return nil
+		})
+
+		sendEncoded(c, res)
+		return
 
 	case webhooks.CmdTrigger:
+		res.Content = "not implemented"
+		sendEncoded(c, res)
+		return
 	case webhooks.CmdLogs:
+		res.Content = "not implemented"
+		sendEncoded(c, res)
+		return
 	case webhooks.CmdQuit:
+		res.Status = 0
+		res.Content = "shutting down"
+		sendEncoded(c, res)
 		done <- true
+		return
 	}
-
-	sendEncoded(c, res)
 }
 
 func acceptIncoming(sock net.Listener, cons chan<- net.Conn) {
@@ -245,4 +356,25 @@ func acceptIncoming(sock net.Listener, cons chan<- net.Conn) {
 func sendEncoded(c net.Conn, msg webhooks.Response) {
 	encoded, _ := json.Marshal(msg)
 	c.Write(encoded)
+}
+
+func genSecret(length int) (string, error) {
+	result := ""
+
+	for {
+		if len(result) >= length {
+			return result, nil
+		}
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(127)))
+		if err != nil {
+			return "", err
+		}
+		n := num.Int64()
+
+		// Make sure that the number/byte/letter is inside
+		// the range of printable ASCII characters (excluding space and DEL)
+		if n > 32 && n < 127 {
+			result += string(n)
+		}
+	}
 }

@@ -55,7 +55,7 @@ const (
 	// CmdSetSecret sets the secret for an app
 	CmdSetSecret
 	// CmdGenSecret generates a random secret for an app
-	CmdShowSecret
+	CmdGetSecret
 	// CmdTrigger manually triggers a webhook as if its endpoint
 	// was called with the correct secret.
 	// * app name
