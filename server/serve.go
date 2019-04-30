@@ -127,7 +127,7 @@ func validateApp(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ctxKey{"app"}, app)
+		ctx := context.WithValue(r.Context(), ctxKey("app"), app)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -136,7 +136,7 @@ func addHookContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		app := ctx.Value(ctxKey{"app"}).(string)
+		app := ctx.Value(ctxKey("app")).(string)
 		hook := chi.URLParam(r, "hook")
 
 		var found hookData
@@ -170,14 +170,14 @@ func addHookContext(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx = context.WithValue(ctx, ctxKey{"hook"}, found)
+		ctx = context.WithValue(ctx, ctxKey("hook"), found)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, ok := ctx.Value(ctxKey{"hook"}).(*hookData)
+	hook, ok := ctx.Value(ctxKey("hook")).(*hookData)
 	if !ok {
 		// NOTE(happens): This should not be able to happen since
 		// the middleware will abort if there is no hook
