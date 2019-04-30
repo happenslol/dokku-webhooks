@@ -18,7 +18,7 @@ commands: **/**/commands.go
 subcommands: $(SUBCOMMANDS)
 
 build-server:
-	mkdir server-app && \
+	mkdir -p server-app && \
 	CGO_ENABLED=0 GOOS=linux go build $(GO_ARGS) -o server-app/server server/*.go && \
 	cp server/Dockerfile server-app && \
 	cp server/Procfile server-app && \

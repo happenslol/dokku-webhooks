@@ -76,9 +76,6 @@ func listen() {
 }
 
 func handleClient(c net.Conn, done chan<- bool) {
-	// NOTE(happens): We always want to close this since
-	// we only ever get one cmd and send one response
-	defer c.Close()
 	de := json.NewDecoder(c)
 
 	var cmd webhooks.Cmd

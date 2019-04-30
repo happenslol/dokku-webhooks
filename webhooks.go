@@ -83,6 +83,11 @@ func SendCmd(t CmdType, args ...string) (string, error) {
 		dokku.LogFail("webhooks server is not running!")
 	}
 
+	argsList := []string{}
+	for _, s := range args {
+		argsList = append(argsList, s)
+	}
+
 	c, err := net.Dial("unix", cmdSocket)
 	if err != nil {
 		e := fmt.Sprintf("unable to connect to cmd socket: %v\n", err)
@@ -92,7 +97,7 @@ func SendCmd(t CmdType, args ...string) (string, error) {
 
 	cmd := Cmd{
 		T:    t,
-		Args: args,
+		Args: argsList,
 	}
 
 	encoded, err := json.Marshal(cmd)
@@ -125,14 +130,19 @@ func SendCmd(t CmdType, args ...string) (string, error) {
 // ExpectArgs checks for the specified args to be present, and display
 // and error message and quit if there are too little or too many.
 func ExpectArgs(actual []string, expected ...string) {
-	if len(actual) > len(expected) {
+	expectedList := []string{}
+	for _, s := range expected {
+		expectedList = append(expectedList, s)
+	}
+
+	if len(actual) > len(expectedList) {
 		dokku.LogFail(fmt.Sprintf("Unexpected argument(s): %v", actual))
 	}
 
-	if len(actual) == 0 && len(expected) > 0 {
+	if len(actual) == 0 && len(expectedList) > 0 {
 		args := []string{}
-		for _, a := range expected {
-			args = append(args, fmt.Sprintf("<%s>", a))
+		for _, s := range expectedList {
+			args = append(args, fmt.Sprintf("<%s>", s))
 		}
 
 		argsStr := strings.Join(args, " ")
