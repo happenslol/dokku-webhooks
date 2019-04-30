@@ -2,7 +2,7 @@ include ../../common.mk
 
 GO_ARGS ?= -a
 
-SUBCOMMANDS = subcommands/create subcommands/delete subcommands/disable subcommands/enable subcommands/listen subcommands/logs subcommands/secret subcommands/set-secret subcommands/stop subcommands/trigger
+SUBCOMMANDS = subcommands/create subcommands/delete subcommands/disable subcommands/enable subcommands/listen subcommands/logs subcommands/gen-secret subcommands/set-secret subcommands/stop subcommands/trigger
 build-in-docker: clean
 	docker run --rm \
 		-v $$PWD/../..:$(GO_REPO_ROOT) \
