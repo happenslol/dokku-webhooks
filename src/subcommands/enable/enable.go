@@ -12,12 +12,7 @@ func main() {
 	webhooks.ExpectArgs(args, "app")
 	app := args[0]
 
-	cmd := webhooks.Cmd{
-		T:    CmdEnableApp,
-		Args: []string{app},
-	}
-
-	res, err := webhooks.CommandEnable(cmd)
+	res, err := webhooks.SendCmd(webhooks.CmdEnableApp, app)
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
 		return

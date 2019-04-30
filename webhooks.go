@@ -70,7 +70,7 @@ const (
 
 // SendCmd sends a message to the command socket and return the response as
 // a string which can be printed out as-is
-func SendCmd(cmd Cmd) (string, error) {
+func SendCmd(t CmdType, args ...string) (string, error) {
 	if !dokku.DirectoryExists(webhooksDir) {
 		// TODO(happens): Tell user how to enable webhooks
 		// NOTE(happens): The directory won't exist if webhooks haven't
@@ -89,6 +89,11 @@ func SendCmd(cmd Cmd) (string, error) {
 		return "", errors.New(e)
 	}
 	defer c.Close()
+
+	cmd := Cmd{
+		T:    t,
+		Args: args,
+	}
 
 	encoded, err := json.Marshal(cmd)
 	if err != nil {

@@ -36,15 +36,20 @@ Additional commands:`
 
 func main() {
 	cmd := os.Args[1]
-	// args := os.Args[2:]
 
 	switch cmd {
 	case "webhooks", "webhooks:show":
-		// webhooks.ExpectArgs(args, "app")
-		// app := args[0]
-		// webhooks.CommandShow(app)
-		// run command
-		webhooks.CommandPing()
+		args := os.Args[2:]
+		webhooks.ExpectArgs(args, "app")
+		app := args[0]
+
+		res, err := webhooks.SendCmd(webhooks.CmdShowApp, app)
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			return
+		}
+
+		fmt.Printf("response: %s\n", res)
 	case "webhooks:help":
 		usage()
 	case "help":
