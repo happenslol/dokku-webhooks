@@ -1,12 +1,7 @@
 package main
 
-import (
-	"os"
-
-	webhooks "github.com/happenslol/dokku-webhooks"
-)
+import "fmt"
 
 func main() {
-	webhooks.ExpectArgs(os.Args[2:])
-	webhooks.CommandStop()
+	fmt.Printf("not implemented\n")
 }

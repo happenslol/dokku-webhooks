@@ -139,3 +139,12 @@ func ExpectArgs(actual []string, expected ...string) {
 		dokku.LogFail(fmt.Sprintf("Expected: %s", argsStr))
 	}
 }
+
+func PrintResult(res string, err error) {
+	if err != nil {
+		fmt.Printf("an error occurred:\n%s\n", err)
+		return
+	}
+
+	fmt.Printf("%s\n", res)
+}

@@ -10,5 +10,6 @@ func main() {
 	args := os.Args[2:]
 	webhooks.ExpectArgs(args, "app", "hook")
 	app, hook := args[0], args[1]
-	webhooks.CommandTrigger(app, hook)
+	res, err := webhooks.SendCmd(webhooks.CmdTrigger, app, hook)
+	webhooks.PrintResult(res, err)
 }
