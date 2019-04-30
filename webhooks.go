@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 
 	dokku "github.com/dokku/dokku/plugins/common"
@@ -51,6 +52,10 @@ const (
 	// * app name
 	// * webhook name
 	CmdDelete
+	// CmdSetSecret sets the secret for an app
+	CmdSetSecret
+	// CmdGenSecret generates a random secret for an app
+	CmdShowSecret
 	// CmdTrigger manually triggers a webhook as if its endpoint
 	// was called with the correct secret.
 	// * app name
@@ -66,12 +71,16 @@ const (
 // SendCmd sends a message to the command socket and return the response as
 // a string which can be printed out as-is
 func SendCmd(cmd Cmd) (string, error) {
-	if !dokku.DirectoryExists(webhooksDir) || !dokku.FileExists(cmdSocket) {
+	if !dokku.DirectoryExists(webhooksDir) {
 		// TODO(happens): Tell user how to enable webhooks
 		// NOTE(happens): The directory won't exist if webhooks haven't
 		// ever been enabled, the cmdSocket won't exist if the server
 		// is not currently running
 		dokku.LogFail("webhooks are not enabled!")
+	}
+
+	if _, err := os.Stat(cmdSocket); err != nil {
+		dokku.LogFail("webhooks server is not running!")
 	}
 
 	c, err := net.Dial("unix", cmdSocket)

@@ -30,9 +30,9 @@ func main() {
 		log.Fatalf("storage dir should exist: %s\n", storageDir)
 	}
 
-	// if !dokku.FileExists(dokkuSocket) {
-	// 	log.Fatalf("dokku daemon socket should exist: %s\n", dokkuSocket)
-	// }
+	if _, err := os.Stat(dokkuSocket); err != nil {
+		log.Fatalf("dokku daemon socket should exist: %s\n", dokkuSocket)
+	}
 
 	if _, err := os.Stat(cmdSocket); err == nil {
 		err = os.Remove(cmdSocket)

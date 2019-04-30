@@ -1,5 +1,22 @@
 package webhooks
 
+import (
+	"fmt"
+)
+
+func CommandPing() {
+	res, err := SendCmd(Cmd{
+		T: CmdPing,
+	})
+
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		return
+	}
+
+	fmt.Printf("response: %s\n", res)
+}
+
 // CommandShow implements webhooks and webhooks:show
 func CommandShow(app string) {
 }
@@ -13,9 +30,6 @@ func CommandDelete(app, hook string) {}
 
 // CommandDisable implements webhooks:disable
 func CommandDisable(app string) {}
-
-// CommandEnable implements webhooks:enable
-func CommandEnable(app string) {}
 
 // CommandListen implements webhooks:listen
 func CommandListen() {}
