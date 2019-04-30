@@ -2,4 +2,4 @@ module github.com/happenslol/dokku-webhooks/subcommands/logs
 
 go 1.12
 
-require github.com/happenslol/dokku-webhooks v0.0.0-20190428164136-2bc3eb8af55a
+require github.com/happenslol/dokku-webhooks v0.0.0-20190430220559-c6cc4a6f2e91

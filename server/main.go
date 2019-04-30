@@ -13,6 +13,12 @@ var jobStorage *bolt.DB
 var hookStorage *bolt.DB
 var wg sync.WaitGroup
 
+type hookData struct {
+	Name            string
+	CommandTemplate string
+	Args            []string
+}
+
 const (
 	secretsBucket = "secrets"
 	enabledBucket = "enabled"

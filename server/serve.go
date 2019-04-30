@@ -18,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type ctxKey string
+
 func serve() {
 	r := chi.NewRouter()
 	r.Route("/{app}/{hook}", func(r chi.Router) {
@@ -99,16 +101,6 @@ func validateSecret(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-type ctxKey struct {
-	string
-}
-
-type hookData struct {
-	Name            string
-	CommandTemplate string
-	Args            []string
 }
 
 func validateApp(next http.Handler) http.Handler {

@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/boltdb/bolt"
+	"github.com/ryanuber/columnize"
 	"golang.org/x/crypto/bcrypt"
 
 	webhooks "github.com/happenslol/dokku-webhooks"
@@ -98,6 +99,36 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdShowApp:
+		app := cmd.Args[0]
+		// TODO(happens): Should we verify here?
+
+		_ = hookStorage.View(func(tx *bolt.Tx) error {
+			appBucketStr := fmt.Sprintf("app/%s", app)
+			appBucket := tx.Bucket([]byte(appBucketStr))
+			if appBucket == nil {
+				res.Status = 0
+				res.Content = "no webhooks for this app"
+				return nil
+			}
+
+			hooks := []string{"NAME, COMMAND"}
+			_ = appBucket.ForEach(func(k []byte, v []byte) error {
+				var hook hookData
+				if err := json.Unmarshal(v, &hook); err != nil {
+					// skip if we can't read it. should probably report something
+					// or just delete it outright?
+					return nil
+				}
+
+				// TODO(happens): Last activation, etc
+				hooks = append(hooks, fmt.Sprintf("%s, %s", hook.Name, hook.CommandTemplate))
+				return nil
+			})
+
+			res.Content = columnize.SimpleFormat(hooks)
+			return nil
+		})
+
 		sendEncoded(c, res)
 		return
 
