@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/boltdb/bolt"
@@ -177,16 +178,43 @@ func addHookContext(next http.Handler) http.Handler {
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, ok := ctx.Value(ctxKey("hook")).(*hookData)
-	if !ok {
+	hook, hookOk := ctx.Value(ctxKey("hook")).(*hookData)
+	app, appOk := ctx.Value(ctxKey("app")).(string)
+
+	if !hookOk || !appOk {
 		// NOTE(happens): This should not be able to happen since
-		// the middleware will abort if there is no hook
+		// the middleware will abort if there is no hook or app
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
 
-	// TODO(happens): Do the thing
-	log.Printf("executing hook command: %v\n", hook)
+	cmd := hook.CommandTemplate
+	params := r.URL.Query()
+	missing := []string{}
+
+	for _, a := range hook.Args {
+		if a == "$app" {
+			cmd = strings.ReplaceAll(cmd, a, app)
+			continue
+		}
+
+		val := params.Get(a)
+		if val == "" {
+			missing = append(missing, a)
+			continue
+		}
+
+		cmd = strings.ReplaceAll(cmd, a, val)
+	}
+
+	if len(missing) > 0 {
+		m := strings.Join(missing, ", ")
+		http.Error(w, fmt.Sprintf("missing arguments: %s", m), 400)
+		return
+	}
+
+	log.Printf("executing command: %s\n", cmd)
+	go sendDokkuCmd(cmd)
 
 	w.WriteHeader(202)
 	w.Write([]byte(http.StatusText(202)))

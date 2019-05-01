@@ -10,8 +10,10 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"regexp"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/ryanuber/columnize"
@@ -19,6 +21,8 @@ import (
 
 	webhooks "github.com/happenslol/dokku-webhooks"
 )
+
+var argsRegex = regexp.MustCompile("\\$[a-zA-Z0-9-_.]+")
 
 func listen() {
 	usr, _ := user.Lookup("root")
@@ -67,7 +71,7 @@ func listen() {
 		case con := <-cons:
 			go handleClient(con, done)
 
-		case _ = <-done:
+		case <-done:
 			log.Printf("cmd socket listener shutting down\n")
 			wg.Done()
 			return
@@ -97,7 +101,6 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 	case webhooks.CmdShowApp:
 		app := cmd.Args[0]
-		// TODO(happens): Should we verify here?
 
 		_ = hookStorage.View(func(tx *bolt.Tx) error {
 			appBucketStr := fmt.Sprintf("app/%s", app)
@@ -108,7 +111,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 				return nil
 			}
 
-			hooks := []string{"NAME, COMMAND"}
+			hooks := []string{"NAME | COMMAND | LAST ACTIVATION"}
 			_ = appBucket.ForEach(func(k []byte, v []byte) error {
 				var hook hookData
 				if err := json.Unmarshal(v, &hook); err != nil {
@@ -117,8 +120,18 @@ func handleClient(c net.Conn, done chan<- bool) {
 					return nil
 				}
 
-				// TODO(happens): Last activation, etc
-				hooks = append(hooks, fmt.Sprintf("%s, %s", hook.Name, hook.CommandTemplate))
+				timeStr := "never"
+				if hook.LastActivation != nil {
+					actTime := time.Unix(*hook.LastActivation, 0)
+					timeStr = actTime.Format("2006-01-02 15:04:05")
+				}
+
+				hooks = append(hooks, fmt.Sprintf(
+					"%s | %s | %s",
+					hook.Name,
+					hook.CommandTemplate,
+					timeStr,
+				))
 				return nil
 			})
 
@@ -131,8 +144,6 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 	case webhooks.CmdEnableApp:
 		app := cmd.Args[0]
-		// TODO(happens): Verify app
-		// TODO(happens): Test for webhooks app lol
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
 			apps := tx.Bucket([]byte(enabledBucket))
@@ -160,8 +171,6 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 	case webhooks.CmdDisableApp:
 		app := cmd.Args[0]
-		// TODO(happens): Verify app
-		// TODO(happens): Test for webhooks app lol
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
 			apps := tx.Bucket([]byte(enabledBucket))
@@ -207,11 +216,11 @@ func handleClient(c net.Conn, done chan<- bool) {
 				return nil
 			}
 
+			hookArgs := argsRegex.FindAllString(command, -1)
 			hookObj := hookData{
 				Name:            hook,
 				CommandTemplate: command,
-				// TODO(happens): Parse command arguments in here for easier
-				// validation during activation
+				Args:            hookArgs,
 			}
 
 			ser, err := json.Marshal(hookObj)
@@ -229,7 +238,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 			}
 
 			res.Content = fmt.Sprintf(
-				"webhook created\n\tendpoint is /%s/%s",
+				"webhook created. endpoint: /%s/%s",
 				app, hook,
 			)
 			return nil

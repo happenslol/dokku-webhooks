@@ -27,7 +27,20 @@ type Response struct {
 	Content string `json:"content,omitempty"`
 }
 
+func (r Response) Ok(res string) {
+	r.Status = statusSuccess
+	r.Content = res
+}
+
+func (r Response) Fail(err error) {
+	r.Status = statusFailure
+	r.Content = err.Error()
+}
+
 const (
+	statusSuccess = 0
+	statusFailure = 1
+
 	webhooksDir = "/var/lib/dokku/data/webhooks"
 	cmdSocket   = "/var/lib/dokku/data/webhooks/cmd.sock"
 

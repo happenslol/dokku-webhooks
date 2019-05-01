@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"os"
 	"sync"
 
@@ -17,6 +18,7 @@ type hookData struct {
 	Name            string
 	CommandTemplate string
 	Args            []string
+	LastActivation  *int64
 }
 
 const (
@@ -49,13 +51,13 @@ func main() {
 
 	var err error
 
-	jobStorage, err = bolt.Open("jobs.db", 0777, nil)
+	jobStorage, err = bolt.Open(jobStoragePath, 0777, nil)
 	if err != nil {
 		log.Fatalf("error opening job storage: %v\n", err)
 	}
 	defer jobStorage.Close()
 
-	hookStorage, err = bolt.Open("hooks.db", 0777, nil)
+	hookStorage, err = bolt.Open(hookStoragePath, 0777, nil)
 	if err != nil {
 		log.Fatalf("error opening hook storage: %v\n", err)
 	}
@@ -73,4 +75,18 @@ func main() {
 	go listen()
 
 	wg.Wait()
+}
+
+func sendDokkuCmd(cmd string) {
+	// TODO(happens): logging for this
+	c, err := net.Dial("unix", dokkuSocket)
+	if err != nil {
+		return
+	}
+	defer c.Close()
+
+	_, err = c.Write([]byte(cmd))
+	if err != nil {
+		return
+	}
 }
