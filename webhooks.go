@@ -153,6 +153,7 @@ func SendCmd(t CmdType, args ...string) (string, error) {
 
 // ExpectArgs checks for the specified args to be present, and display
 // and error message and quit if there are too little or too many.
+// TODO(happens): Ignore flags
 func ExpectArgs(actual []string, expected ...string) {
 	expectedList := []string{}
 	for _, s := range expected {

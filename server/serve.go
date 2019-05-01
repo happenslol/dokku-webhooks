@@ -44,7 +44,7 @@ func serve() {
 		port = fmt.Sprintf(":%s", port)
 	}
 
-	fmt.Printf("listening on %s", port)
+	fmt.Printf("listening on %s\n", port)
 
 	go func() { http.ListenAndServe(port, r) }()
 
@@ -175,22 +175,16 @@ func addHookContext(next http.Handler) http.Handler {
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, hookOk := ctx.Value(ctxHook).(*hookData)
-	app, appOk := ctx.Value(ctxApp).(string)
-
-	if !hookOk || !appOk {
-		// NOTE(happens): This should not be able to happen since
-		// the middleware will abort if there is no hook or app
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
+	hook := ctx.Value(ctxHook).(hookData)
+	app := ctx.Value(ctxApp).(string)
 
 	query := r.URL.Query()
 	params := make(map[string]string)
 
-	params["app"] = app
+	params["#app"] = app
 	for k, _ := range query {
-		params[k] = query.Get(k)
+		key := fmt.Sprintf("#%s", k)
+		params[k] = query.Get(key)
 	}
 
 	cmd, err := hook.GetCmd(params)

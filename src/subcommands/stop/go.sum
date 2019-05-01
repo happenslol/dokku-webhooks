@@ -40,6 +40,8 @@ github.com/happenslol/dokku-webhooks v0.0.0-20190501165911-a720edc1f1ae h1:a6xF1
 github.com/happenslol/dokku-webhooks v0.0.0-20190501165911-a720edc1f1ae/go.mod h1:FIqaKbyksMJMDhPlcST4DE188EXt3Dy+GPWWnVXSQAQ=
 github.com/happenslol/dokku-webhooks v0.0.0-20190501171328-1426518dd789 h1:YvtSQsHIrTKM3TDuGbz4WsHypiE7ekj4Y9NK+lloyzA=
 github.com/happenslol/dokku-webhooks v0.0.0-20190501171328-1426518dd789/go.mod h1:FIqaKbyksMJMDhPlcST4DE188EXt3Dy+GPWWnVXSQAQ=
+github.com/happenslol/dokku-webhooks v0.0.0-20190501183003-8ada6c39091d h1:D+DjtEqfCRWRu7yl2fcnelKbnuT4aGFCAk4lIQgeKKk=
+github.com/happenslol/dokku-webhooks v0.0.0-20190501183003-8ada6c39091d/go.mod h1:FIqaKbyksMJMDhPlcST4DE188EXt3Dy+GPWWnVXSQAQ=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-isatty v0.0.5/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
 github.com/mattn/go-isatty v0.0.7/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
