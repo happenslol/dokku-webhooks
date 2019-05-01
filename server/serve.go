@@ -6,19 +6,22 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/boltdb/bolt"
-	dokku "github.com/dokku/dokku/plugins/common"
 	"github.com/go-chi/chi"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type ctxKey string
+
+const (
+	ctxApp  ctxKey = "app"
+	ctxHook ctxKey = "hook"
+)
 
 func serve() {
 	r := chi.NewRouter()
@@ -41,7 +44,7 @@ func serve() {
 		port = fmt.Sprintf(":%s", port)
 	}
 
-	log.Printf("listening on %s", port)
+	fmt.Printf("listening on %s", port)
 
 	go func() { http.ListenAndServe(port, r) }()
 
@@ -49,14 +52,14 @@ func serve() {
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT)
 
 	<-sigc
-	log.Printf("server shutting down\n")
+	fmt.Printf("server shutting down\n")
 	wg.Done()
 }
 
 func validateSecret(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		app := ctx.Value("app").(string)
+		app := ctx.Value(ctxApp).(string)
 
 		b, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -87,30 +90,25 @@ func validateSecret(next http.Handler) http.Handler {
 
 		if err != nil {
 			// NOTE(happens): We generally never want to return
-			// anything more specific than 403 at this point, for
+			// anything more specific than 401 at this point, for
 			// security reasons
-			http.Error(w, http.StatusText(403), 403)
+			http.Error(w, http.StatusText(401), 401)
 			return
 		}
 
 		err = bcrypt.CompareHashAndPassword([]byte(found), []byte(pw))
 		if len(found) == 0 || err != nil {
-			http.Error(w, http.StatusText(403), 403)
+			http.Error(w, http.StatusText(401), 401)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func validateApp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app := chi.URLParam(r, "app")
-
-		if err := dokku.VerifyAppName(app); err != nil {
-			http.Error(w, err.Error(), 400)
-			return
-		}
 
 		enabled := false
 		_ = hookStorage.View(func(tx *bolt.Tx) error {
@@ -127,7 +125,7 @@ func validateApp(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ctxKey("app"), app)
+		ctx := context.WithValue(r.Context(), ctxApp, app)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -136,7 +134,7 @@ func addHookContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		app := ctx.Value(ctxKey("app")).(string)
+		app := ctx.Value(ctxApp).(string)
 		hook := chi.URLParam(r, "hook")
 
 		var found hookData
@@ -170,15 +168,15 @@ func addHookContext(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx = context.WithValue(ctx, ctxKey("hook"), found)
+		ctx = context.WithValue(ctx, ctxHook, found)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func executeHook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	hook, hookOk := ctx.Value(ctxKey("hook")).(*hookData)
-	app, appOk := ctx.Value(ctxKey("app")).(string)
+	hook, hookOk := ctx.Value(ctxHook).(*hookData)
+	app, appOk := ctx.Value(ctxApp).(string)
 
 	if !hookOk || !appOk {
 		// NOTE(happens): This should not be able to happen since
@@ -201,7 +199,7 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("executing command: %s\n", cmd)
+	fmt.Printf("executing command: %s\n", cmd)
 	go sendDokkuCmd(cmd)
 
 	w.WriteHeader(202)

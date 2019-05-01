@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"net"
 	"os"
@@ -30,7 +29,7 @@ func listen() {
 	grp, _ := user.LookupGroup("root")
 
 	if usr == nil || grp == nil {
-		log.Fatal("user did not exist\n")
+		panic("user did not exist\n")
 	}
 
 	uid, _ := strconv.Atoi(usr.Uid)
@@ -38,20 +37,23 @@ func listen() {
 
 	sock, err := net.Listen("unix", cmdSocket)
 	if err != nil {
-		log.Fatalf("could not create socket: %v\n", err)
+		p := fmt.Sprintf("could not create socket: %v\n", err)
+		panic(p)
 	}
 
-	log.Printf("listening on %s\n", cmdSocket)
+	fmt.Printf("listening on %s\n", cmdSocket)
 	defer sock.Close()
 
 	err = os.Chown(cmdSocket, uid, gid)
 	if err != nil {
-		log.Fatalf("could not set cmd socket owner: %v\n", err)
+		p := fmt.Sprintf("could not set cmd socket owner: %v\n", err)
+		panic(p)
 	}
 
 	err = os.Chmod(cmdSocket, 0777)
 	if err != nil {
-		log.Fatalf("could not set cmd socket permissions: %v\n", err)
+		p := fmt.Sprintf("could not set cmd socket permissions: %v\n", err)
+		panic(p)
 	}
 
 	cons := make(chan net.Conn, 10)
@@ -61,7 +63,7 @@ func listen() {
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT)
 	go func(c chan os.Signal) {
 		sig := <-c
-		log.Printf("received signal: %s\n", sig)
+		fmt.Printf("received signal: %s\n", sig)
 		done <- true
 	}(sigc)
 
@@ -73,7 +75,7 @@ func listen() {
 			go handleClient(con, done)
 
 		case <-done:
-			log.Printf("cmd socket listener shutting down\n")
+			fmt.Printf("cmd socket listener shutting down\n")
 			wg.Done()
 			return
 		}
@@ -91,7 +93,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 	var cmd webhooks.Cmd
 	if err := de.Decode(&cmd); err != nil {
-		log.Printf("unable to decode message: %v\n", err)
+		fmt.Printf("unable to decode message: %v\n", err)
 		return
 	}
 
@@ -101,7 +103,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdShowApp:
-		log.Printf("running CmdShowApp with args %v\n", cmd.Args)
+		fmt.Printf("running CmdShowApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		_ = hookStorage.View(func(tx *bolt.Tx) error {
@@ -143,7 +145,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdEnableApp:
-		log.Printf("running CmdEnableApp with args %v\n", cmd.Args)
+		fmt.Printf("running CmdEnableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		err := hookStorage.Update(func(tx *bolt.Tx) error {
@@ -172,7 +174,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdDisableApp:
-		log.Printf("running CmdDisableApp with args %v\n", cmd.Args)
+		fmt.Printf("running CmdDisableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		err := hookStorage.Update(func(tx *bolt.Tx) error {
@@ -201,7 +203,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdCreate:
-		log.Printf("running CmdCreate with args %v\n", cmd.Args)
+		fmt.Printf("running CmdCreate with args %v\n", cmd.Args)
 		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 
 		err := hookStorage.Update(func(tx *bolt.Tx) error {
@@ -249,7 +251,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdDelete:
-		log.Printf("running CmdDelete with args %v\n", cmd.Args)
+		fmt.Printf("running CmdDelete with args %v\n", cmd.Args)
 		app, hook := cmd.Args[0], cmd.Args[1]
 
 		err := hookStorage.Update(func(tx *bolt.Tx) error {
@@ -283,7 +285,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdSetSecret:
-		log.Printf("running CmdSetSecret with args %v\n", cmd.Args)
+		fmt.Printf("running CmdSetSecret with args %v\n", cmd.Args)
 		app, secret, forceStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 		force := forceStr == "true"
 
@@ -322,7 +324,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdGenSecret:
-		log.Printf("running CmdGenSecret with args %v\n", cmd.Args)
+		fmt.Printf("running CmdGenSecret with args %v\n", cmd.Args)
 		app, forceStr, lengthStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 		force := forceStr == "true"
 		length, err := strconv.Atoi(lengthStr)
@@ -374,7 +376,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdTrigger:
-		log.Printf("running CmdTrigger with args %v\n", cmd.Args)
+		fmt.Printf("running CmdTrigger with args %v\n", cmd.Args)
 		app, hook := cmd.Args[0], cmd.Args[1]
 
 		var found hookData
@@ -412,18 +414,18 @@ func handleClient(c net.Conn, done chan<- bool) {
 			return
 		}
 
-		log.Printf("executing command: %s\n", cmd)
+		fmt.Printf("executing command: %s\n", cmd)
 		go sendDokkuCmd(cmd)
 		res.Ok("accepted")
 
 		return
 
 	case webhooks.CmdLogs:
-		log.Printf("running CmdLogs with args %v\n", cmd.Args)
+		fmt.Printf("running CmdLogs with args %v\n", cmd.Args)
 		res.Ok("not implemented")
 		return
 	case webhooks.CmdQuit:
-		log.Printf("running CmdQuit with args %v\n", cmd.Args)
+		fmt.Printf("running CmdQuit with args %v\n", cmd.Args)
 		res.Ok("shutting down")
 		done <- true
 	}
