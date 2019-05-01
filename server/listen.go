@@ -80,6 +80,7 @@ func listen() {
 }
 
 func handleClient(c net.Conn, done chan<- bool) {
+	defer c.Close()
 	de := json.NewDecoder(c)
 
 	var cmd webhooks.Cmd
@@ -88,18 +89,16 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 	}
 
-	log.Printf("received command: %v\n", cmd)
-
 	var res webhooks.Response
 
 	switch cmd.T {
 	case webhooks.CmdPing:
-		res.Content = "up"
-
+		res.Ok("up")
 		sendEncoded(c, res)
 		return
 
 	case webhooks.CmdShowApp:
+		log.Printf("running CmdShowApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		_ = hookStorage.View(func(tx *bolt.Tx) error {
@@ -143,6 +142,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdEnableApp:
+		log.Printf("running CmdEnableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
@@ -170,6 +170,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdDisableApp:
+		log.Printf("running CmdDisableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
@@ -197,6 +198,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdCreate:
+		log.Printf("running CmdCreate with args %v\n", cmd.Args)
 		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
@@ -248,6 +250,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdDelete:
+		log.Printf("running CmdDelete with args %v\n", cmd.Args)
 		app, hook := cmd.Args[0], cmd.Args[1]
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
@@ -284,6 +287,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdSetSecret:
+		log.Printf("running CmdSetSecret with args %v\n", cmd.Args)
 		app, secret, forceStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 		force := forceStr == "true"
 
@@ -323,6 +327,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdGenSecret:
+		log.Printf("running CmdGenSecret with args %v\n", cmd.Args)
 		app, forceStr, lengthStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 		force := forceStr == "true"
 		length, err := strconv.Atoi(lengthStr)
@@ -376,14 +381,17 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdTrigger:
+		log.Printf("running CmdTrigger with args %v\n", cmd.Args)
 		res.Content = "not implemented"
 		sendEncoded(c, res)
 		return
 	case webhooks.CmdLogs:
+		log.Printf("running CmdLogs with args %v\n", cmd.Args)
 		res.Content = "not implemented"
 		sendEncoded(c, res)
 		return
 	case webhooks.CmdQuit:
+		log.Printf("running CmdQuit with args %v\n", cmd.Args)
 		res.Status = 0
 		res.Content = "shutting down"
 		sendEncoded(c, res)
