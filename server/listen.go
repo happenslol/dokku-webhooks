@@ -23,7 +23,7 @@ import (
 	webhooks "github.com/happenslol/dokku-webhooks"
 )
 
-var argsRegex = regexp.MustCompile("\\$[a-zA-Z0-9-_.]+")
+var argsRegex = regexp.MustCompile("\\#[a-zA-Z0-9-_.]+")
 
 func listen() {
 	usr, _ := user.Lookup("root")
@@ -405,7 +405,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		}
 
 		params := make(map[string]string)
-		params["$app"] = app
+		params["app"] = app
 		cmd, err := found.GetCmd(params)
 		if err != nil {
 			res.Fail(err)

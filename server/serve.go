@@ -190,7 +190,7 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	params := make(map[string]string)
 
-	params["$app"] = app
+	params["app"] = app
 	for k, _ := range query {
 		params[k] = query.Get(k)
 	}

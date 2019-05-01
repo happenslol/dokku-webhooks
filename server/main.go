@@ -29,13 +29,14 @@ func (h hookData) GetCmd(args map[string]string) (string, error) {
 	missing := []string{}
 
 	for _, arg := range h.Args {
-		val, ok := args[arg]
+		k := fmt.Sprintf("#%s", arg)
+		val, ok := args[k]
 		if !ok {
 			missing = append(missing, arg)
 			continue
 		}
 
-		result = strings.ReplaceAll(result, arg, val)
+		result = strings.ReplaceAll(result, k, val)
 	}
 
 	if len(missing) > 0 {
