@@ -228,6 +228,10 @@ func handleClient(c net.Conn, done chan<- bool) {
 				return nil
 			}
 
+			res.Content = fmt.Sprintf(
+				"webhook created\n\tendpoint is /%s/%s",
+				app, hook,
+			)
 			return nil
 		})
 
@@ -260,7 +264,10 @@ func handleClient(c net.Conn, done chan<- bool) {
 				return nil
 			}
 
-			res.Content = "hook deleted"
+			res.Content = fmt.Sprintf(
+				"webhook %s/%s deleted",
+				app, hook,
+			)
 			return nil
 		})
 
@@ -346,6 +353,12 @@ func handleClient(c net.Conn, done chan<- bool) {
 				res.Content = fmt.Sprintf("failed to save secret: %v", err)
 				return nil
 			}
+
+			res.Content = fmt.Sprintf(
+				"generated secret for %s: %s\n%s",
+				app, gen,
+				"you should save this somewhere, the plaintext can not be retrieved after this!",
+			)
 
 			return nil
 		})

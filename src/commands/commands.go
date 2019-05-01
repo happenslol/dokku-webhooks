@@ -21,9 +21,8 @@ Additional commands:`
 	helpContent = `
     webhooks:show <app>, List registered webhooks for an app
     webhooks:listen, Start the webhook server
-    webhooks:auto-listen, Automatically keep the webhook server running
     webhooks:stop, Stop the webhook server
-    webhooks:secret <app>, Print the secret for an app
+    webhooks:gen-secret <app>, Generate a random secret for an app
     webhooks:set-secret <app> <secret>, Set the secret for an app
     webhooks:enable <app>, Enable all webhooks for an app
     webhooks:disable <app>, Disable all webhooks for an app
