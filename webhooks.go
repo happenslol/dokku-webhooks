@@ -53,15 +53,18 @@ const (
 	// CmdCreate creates a webhook.
 	// * app name
 	// * webhook name
-	// * command
+	// * command template
 	CmdCreate
 	// CmdDelete deletes a webhook.
 	// * app name
 	// * webhook name
 	CmdDelete
 	// CmdSetSecret sets the secret for an app
+	// * app name
+	// * secret
 	CmdSetSecret
 	// CmdGenSecret generates a random secret for an app
+	// * app name
 	CmdGenSecret
 	// CmdTrigger manually triggers a webhook as if its endpoint
 	// was called with the correct secret.
