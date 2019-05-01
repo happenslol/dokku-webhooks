@@ -27,7 +27,7 @@ type Response struct {
 	Content string `json:"content,omitempty"`
 }
 
-func (Response) Default() Response {
+func NewResponse() Response {
 	var result Response
 	result.Fail(errors.New("no content"))
 	return result

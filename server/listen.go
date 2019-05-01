@@ -84,7 +84,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 	defer c.Close()
 
 	// NOTE(happens): Make sure we always send a response
-	res := webhooks.Response.Default()
+	res := webhooks.NewResponse()
 	defer sendEncoded(c, res)
 
 	de := json.NewDecoder(c)
