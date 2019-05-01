@@ -44,12 +44,7 @@ func main() {
 		app := args[0]
 
 		res, err := webhooks.SendCmd(webhooks.CmdShowApp, app)
-		if err != nil {
-			fmt.Printf("error: %v\n", err)
-			return
-		}
-
-		fmt.Printf("response: %s\n", res)
+		webhooks.PrintResult(res, err)
 	case "webhooks:help":
 		usage()
 	case "help":

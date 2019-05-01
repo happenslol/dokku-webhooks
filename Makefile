@@ -27,8 +27,11 @@ build-server:
 subcommands/%: src/subcommands/*/%.go
 	go build $(GO_ARGS) -o $@ $<
 
-clean:
-	rm -rf commands subcommands server-app
+clean: clean-server
+	rm -rf commands subcommands
+
+clean-server:
+	rm -rf server-app
 
 src-clean:
 	rm -rf .gitignore src vendor server Makefile *.go

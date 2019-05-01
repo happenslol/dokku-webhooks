@@ -188,7 +188,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 
 	case webhooks.CmdCreate:
-		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[3]
+		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 
 		_ = hookStorage.Update(func(tx *bolt.Tx) error {
 			appBucketStr := fmt.Sprintf("app/%s", app)
