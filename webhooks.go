@@ -38,12 +38,6 @@ func (r Response) Fail(err error) {
 }
 
 const (
-	statusSuccess = 0
-	statusFailure = 1
-
-	webhooksDir = "/var/lib/dokku/data/webhooks"
-	cmdSocket   = "/var/lib/dokku/data/webhooks/cmd.sock"
-
 	// CmdPing pings the webhooks server to check its health.
 	CmdPing CmdType = iota
 	// CmdShowApp returns a list of all webhooks and their status
@@ -79,6 +73,14 @@ const (
 	CmdLogs
 	// CmdQuit shuts down the server process.
 	CmdQuit
+)
+
+const (
+	statusSuccess = 0
+	statusFailure = 1
+
+	webhooksDir = "/var/lib/dokku/data/webhooks"
+	cmdSocket   = "/var/lib/dokku/data/webhooks/cmd.sock"
 )
 
 // SendCmd sends a message to the command socket and return the response as
