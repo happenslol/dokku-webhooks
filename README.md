@@ -1,17 +1,31 @@
-# Dokku webhooks plugin
+# dokku webhooks plugin
 
 **This project is a work-in-progress and not usable yet!**
 
-This dokku plugin will enable you to trigger dokku commands through webhooks you define, secured by secrets you set. [bolt](https://github.com/boltdb/bolt) is used as a backing storage to keep track of secrets and hooks. This is how the plugin basically works:
+dokku-webhooks lets you issue custom dokku commands by triggering webhooks. The core functionality is implemented and working, but the glue that holds everything together is not all there yet. The following things still need to happen before this plugin is usable in production:
 
-* An app called `webhooks-server` is created and started. You can add domains to this server so that you can reach it under your defined address.
-* A storage with 2 unix sockets is created and mounted to the `webhooks-server`:
-    * [dokku daemon](https://github.com/dokku/dokku-daemon), which is used to send commands from the container to dokku running on the host,
-    * another socket used for communication between the dokku cli and the `webhooks-server`.
-* The server then creates its databases inside the mounted folder:
-    * The hooks database, containing secrets and the hooks for each app,
-    * the jobs database, where entries will be pushed when a webhook is triggered and progress for running jobs will be tracked.
-* Webhooks can be added, removed and configured through the cli and will be passed to the server through the socket.
-* When the server receives a `POST` request, it will check the body against the secrets database and then look for the hook's ID. It will then look for any variables in the command and replace them with given query parameters, and output the command the the daemon's socket.
+- [ ] Implement log recording for executed commands
+- [ ] Add an install script
+- [ ] Implement `listen` and `stop` commands
+- [ ] Improve overall logging quality
+- [ ] Add tests for server and cli commands
+- [ ] Add documentation for installation and usage
 
-Documentation and usage instructions will be added when basic functionality is working.
+The workflow will look like this:
+
+* Install the plugin using `dokku plugin:install https://github.com/happenslol/dokku-webhooks.git`
+* Enable the webhook server: `dokku webhooks:listen`
+* Generate a secret for your app: `dokku webhooks:gen-secret <app> --length 64`
+* Enable webhooks for your app: `dokku webhooks:enable <app>`
+* Create a webhook. The command you pass can contain variables that will be substituted with url query params you pass. Additionally, there's available params like the app name, which enable you to easily write commands.
+
+```bash
+# A post request to /foo/webhook1 with the secret as the body will trigger the command ps:rebuild foo
+dokku webhooks:create foo webhook1 "ps:rebuild #app"
+
+# Posting the secret to /foo/webhook2?cmd=stop will run ps:stop foo
+dokku webhooks:create foo webhook2 "ps:#cmd #app"
+```
+
+* If you want to manually trigger a webhook to test if it works, you can run `dokku webhooks:trigger foo webhook2 --args "cmd=stop"`
+* Using `dokku webhooks:logs foo webhook2`, you can see the most recent output of the command
