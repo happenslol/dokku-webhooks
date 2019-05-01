@@ -6,8 +6,10 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/dokku/dokku v0.15.5
 	github.com/go-chi/chi v4.0.2+incompatible
-	github.com/happenslol/dokku-webhooks v0.0.0-20190501003106-d649f936e50c
+	github.com/happenslol/dokku-webhooks v0.0.0-20190501135414-4029b5fe1000
 	github.com/ryanuber/columnize v2.1.0+incompatible
 	github.com/saibing/bingo v0.0.0-20190331051950-76bcd777316d // indirect
 	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
+	golang.org/x/net v0.0.0-20190501004415-9ce7a6920f09 // indirect
+	golang.org/x/tools v0.0.0-20190501045030-23463209683d // indirect
 )
