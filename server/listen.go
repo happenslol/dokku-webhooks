@@ -85,7 +85,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 	// NOTE(happens): Make sure we always send a response
 	res := webhooks.NewResponse()
-	defer sendEncoded(c, res)
+	defer sendEncoded(c, &res)
 
 	de := json.NewDecoder(c)
 
@@ -440,7 +440,7 @@ func acceptIncoming(sock net.Listener, cons chan<- net.Conn) {
 	}
 }
 
-func sendEncoded(c net.Conn, msg webhooks.Response) {
+func sendEncoded(c net.Conn, msg *webhooks.Response) {
 	encoded, _ := json.Marshal(msg)
 	c.Write(encoded)
 }

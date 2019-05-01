@@ -33,12 +33,12 @@ func NewResponse() Response {
 	return result
 }
 
-func (r Response) Ok(res string) {
+func (r *Response) Ok(res string) {
 	r.Status = statusSuccess
 	r.Content = res
 }
 
-func (r Response) Fail(err error) {
+func (r *Response) Fail(err error) {
 	r.Status = statusFailure
 	r.Content = err.Error()
 }
