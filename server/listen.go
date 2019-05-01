@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -81,6 +82,11 @@ func listen() {
 
 func handleClient(c net.Conn, done chan<- bool) {
 	defer c.Close()
+
+	// NOTE(happens): Make sure we always send a response
+	res := webhooks.Response.Default()
+	defer sendEncoded(c, res)
+
 	de := json.NewDecoder(c)
 
 	var cmd webhooks.Cmd
@@ -89,12 +95,9 @@ func handleClient(c net.Conn, done chan<- bool) {
 		return
 	}
 
-	var res webhooks.Response
-
 	switch cmd.T {
 	case webhooks.CmdPing:
 		res.Ok("up")
-		sendEncoded(c, res)
 		return
 
 	case webhooks.CmdShowApp:
@@ -105,12 +108,11 @@ func handleClient(c net.Conn, done chan<- bool) {
 			appBucketStr := fmt.Sprintf("app/%s", app)
 			appBucket := tx.Bucket([]byte(appBucketStr))
 			if appBucket == nil {
-				res.Status = 0
-				res.Content = "no webhooks for this app"
+				res.Ok("no webhooks for this app")
 				return nil
 			}
 
-			hooks := []string{"NAME | COMMAND | LAST ACTIVATION"}
+			data := []string{"NAME | COMMAND | LAST ACTIVATION"}
 			_ = appBucket.ForEach(func(k []byte, v []byte) error {
 				var hook hookData
 				if err := json.Unmarshal(v, &hook); err != nil {
@@ -125,7 +127,7 @@ func handleClient(c net.Conn, done chan<- bool) {
 					timeStr = actTime.Format("2006-01-02 15:04:05")
 				}
 
-				hooks = append(hooks, fmt.Sprintf(
+				data = append(data, fmt.Sprintf(
 					"%s | %s | %s",
 					hook.Name,
 					hook.CommandTemplate,
@@ -134,88 +136,87 @@ func handleClient(c net.Conn, done chan<- bool) {
 				return nil
 			})
 
-			res.Content = columnize.SimpleFormat(hooks)
+			result := columnize.SimpleFormat(data)
+			res.Ok(result)
 			return nil
 		})
-
-		sendEncoded(c, res)
 		return
 
 	case webhooks.CmdEnableApp:
 		log.Printf("running CmdEnableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err := hookStorage.Update(func(tx *bolt.Tx) error {
 			apps := tx.Bucket([]byte(enabledBucket))
 			raw := apps.Get([]byte(app))
 			enabled := raw != nil && string(raw) == ""
 
 			if enabled {
-				res.Content = "app was already enabled"
+				res.Ok("app was already enabled")
 				return nil
 			}
 
 			err := apps.Put([]byte(app), []byte(""))
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to enable app: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to enable app: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = "app enabled"
+			res.Ok("app enabled")
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdDisableApp:
 		log.Printf("running CmdDisableApp with args %v\n", cmd.Args)
 		app := cmd.Args[0]
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err := hookStorage.Update(func(tx *bolt.Tx) error {
 			apps := tx.Bucket([]byte(enabledBucket))
 			raw := apps.Get([]byte(app))
 			enabled := raw != nil && string(raw) == ""
 
 			if !enabled {
-				res.Content = "app was not enabled"
+				res.Ok("app was not enabled")
 				return nil
 			}
 
 			err := apps.Delete([]byte(app))
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to disable app: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to disable app: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = "app disabled"
+			res.Ok("app disabled")
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdCreate:
 		log.Printf("running CmdCreate with args %v\n", cmd.Args)
 		app, hook, command := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err := hookStorage.Update(func(tx *bolt.Tx) error {
 			appBucketStr := fmt.Sprintf("app/%s", app)
 			appBucket, err := tx.CreateBucketIfNotExists([]byte(appBucketStr))
 
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("could not create app bucket: %v", err)
-				return nil
+				e := fmt.Sprintf("could not create app bucket: %v", err)
+				return errors.New(e)
 			}
 
 			foundRaw := appBucket.Get([]byte(hook))
 			if foundRaw != nil {
-				res.Status = 1
-				res.Content = "a hook with that name already exists"
-				return nil
+				e := "a hook with that name already exists"
+				return errors.New(e)
 			}
 
 			hookArgs := argsRegex.FindAllString(command, -1)
@@ -227,63 +228,58 @@ func handleClient(c net.Conn, done chan<- bool) {
 
 			ser, err := json.Marshal(hookObj)
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to serialize hook: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to serialize hook: %v", err)
+				return errors.New(e)
 			}
 
 			err = appBucket.Put([]byte(hook), ser)
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("unable to save hook: %v", err)
-				return nil
+				e := fmt.Sprintf("unable to save hook: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = fmt.Sprintf(
-				"webhook created. endpoint: /%s/%s",
-				app, hook,
-			)
+			result := fmt.Sprintf("webhook created. endpoint: /%s/%s", app, hook)
+			res.Ok(result)
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdDelete:
 		log.Printf("running CmdDelete with args %v\n", cmd.Args)
 		app, hook := cmd.Args[0], cmd.Args[1]
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err := hookStorage.Update(func(tx *bolt.Tx) error {
 			appBucketStr := fmt.Sprintf("app/%s", app)
 			appBucket := tx.Bucket([]byte(appBucketStr))
 			if appBucket == nil {
-				res.Status = 0
-				res.Content = "hook does not exist"
+				res.Ok("hook does not exist")
 				return nil
 			}
 
 			foundRaw := appBucket.Get([]byte(hook))
 			if foundRaw == nil {
-				res.Status = 0
-				res.Content = "hook does not exist"
+				res.Ok("hook does not exist")
 				return nil
 			}
 
 			err := appBucket.Delete([]byte(hook))
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to delete hook: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to delete hook: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = fmt.Sprintf(
-				"webhook %s/%s deleted",
-				app, hook,
-			)
+			result := fmt.Sprintf("webhook %s/%s deleted", app, hook)
+			res.Ok(result)
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdSetSecret:
@@ -291,39 +287,38 @@ func handleClient(c net.Conn, done chan<- bool) {
 		app, secret, forceStr := cmd.Args[0], cmd.Args[1], cmd.Args[2]
 		force := forceStr == "true"
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err := hookStorage.Update(func(tx *bolt.Tx) error {
 			secrets := tx.Bucket([]byte(secretsBucket))
 
 			if !force && secrets.Get([]byte(app)) != nil {
-				res.Status = 1
-				res.Content = "secret is already set, please use `--force` if you want to overwrite it"
-				return nil
+				e := "secret is already set, please use `--force` if you want to overwrite it"
+				return errors.New(e)
 			}
 
 			encrypted, err := bcrypt.GenerateFromPassword([]byte(secret), 10)
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to encrypt secret: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to encrypt secret: %v", err)
+				return errors.New(e)
 			}
 
 			err = secrets.Put([]byte(app), []byte(encrypted))
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to save secret: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to save secret: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = fmt.Sprintf(
+			result := fmt.Sprintf(
 				"set secret for %s: %s\n%s",
 				app, secret,
 				"you should save this somewhere, the plaintext can not be retrieved after this!",
 			)
-
+			res.Ok(result)
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdGenSecret:
@@ -332,71 +327,105 @@ func handleClient(c net.Conn, done chan<- bool) {
 		force := forceStr == "true"
 		length, err := strconv.Atoi(lengthStr)
 		if err != nil {
-			res.Status = 1
-			res.Content = fmt.Sprintf("requested secret length is not a number: %s", lengthStr)
-			sendEncoded(c, res)
+			e := fmt.Sprintf("requested secret length is not a number: %s", lengthStr)
+			err := errors.New(e)
+			res.Fail(err)
 			return
 		}
 
-		_ = hookStorage.Update(func(tx *bolt.Tx) error {
+		err = hookStorage.Update(func(tx *bolt.Tx) error {
 			secrets := tx.Bucket([]byte(secretsBucket))
 
 			if !force && secrets.Get([]byte(app)) != nil {
-				res.Status = 1
-				res.Content = "secret is already set, please use `--force` if you want to overwrite it"
-				return nil
+				e := "secret is already set, please use `--force` if you want to overwrite it"
+				return errors.New(e)
 			}
 
 			gen, err := genSecret(length)
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to generate secret: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to generate secret: %v", err)
+				return errors.New(e)
 			}
 
 			encrypted, err := bcrypt.GenerateFromPassword([]byte(gen), 10)
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to encrypt secret: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to encrypt secret: %v", err)
+				return errors.New(e)
 			}
 
 			err = secrets.Put([]byte(app), []byte(encrypted))
 			if err != nil {
-				res.Status = 1
-				res.Content = fmt.Sprintf("failed to save secret: %v", err)
-				return nil
+				e := fmt.Sprintf("failed to save secret: %v", err)
+				return errors.New(e)
 			}
 
-			res.Content = fmt.Sprintf(
+			result := fmt.Sprintf(
 				"generated secret for %s: %s\n%s",
 				app, gen,
 				"you should save this somewhere, the plaintext can not be retrieved after this!",
 			)
-
+			res.Ok(result)
 			return nil
 		})
 
-		sendEncoded(c, res)
+		if err != nil {
+			res.Fail(err)
+		}
 		return
 
 	case webhooks.CmdTrigger:
 		log.Printf("running CmdTrigger with args %v\n", cmd.Args)
-		res.Content = "not implemented"
-		sendEncoded(c, res)
+		app, hook := cmd.Args[0], cmd.Args[1]
+
+		var found hookData
+		err := hookStorage.View(func(tx *bolt.Tx) error {
+			appBucketStr := fmt.Sprintf("app/%s", app)
+			appBucket := tx.Bucket([]byte(appBucketStr))
+			if appBucket == nil {
+				return errors.New("hook does not exist")
+			}
+
+			foundRaw := appBucket.Get([]byte(hook))
+			if foundRaw == nil {
+				return errors.New("hook does not exist")
+			}
+
+			err := json.Unmarshal(foundRaw, &found)
+			if err != nil {
+				e := fmt.Sprintf("error reading hook data: %v, data:%v", err, foundRaw)
+				return errors.New(e)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			res.Fail(err)
+			return
+		}
+
+		params := make(map[string]string)
+		params["$app"] = app
+		cmd, err := found.GetCmd(params)
+		if err != nil {
+			res.Fail(err)
+			return
+		}
+
+		log.Printf("executing command: %s\n", cmd)
+		go sendDokkuCmd(cmd)
+		res.Ok("accepted")
+
 		return
+
 	case webhooks.CmdLogs:
 		log.Printf("running CmdLogs with args %v\n", cmd.Args)
-		res.Content = "not implemented"
-		sendEncoded(c, res)
+		res.Ok("not implemented")
 		return
 	case webhooks.CmdQuit:
 		log.Printf("running CmdQuit with args %v\n", cmd.Args)
-		res.Status = 0
-		res.Content = "shutting down"
-		sendEncoded(c, res)
+		res.Ok("shutting down")
 		done <- true
-		return
 	}
 }
 

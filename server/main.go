@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -19,6 +22,29 @@ type hookData struct {
 	CommandTemplate string
 	Args            []string
 	LastActivation  *int64
+}
+
+func (h hookData) GetCmd(args map[string]string) (string, error) {
+	result := h.CommandTemplate
+	missing := []string{}
+
+	for _, arg := range h.Args {
+		val, ok := args[arg]
+		if !ok {
+			missing = append(missing, arg)
+			continue
+		}
+
+		result = strings.ReplaceAll(result, arg, val)
+	}
+
+	if len(missing) > 0 {
+		all := strings.Join(missing, ", ")
+		e := fmt.Sprintf("missing arguments: %s", all)
+		return "", errors.New(e)
+	}
+
+	return result, nil
 }
 
 const (

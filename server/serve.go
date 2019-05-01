@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/boltdb/bolt"
@@ -188,28 +187,17 @@ func executeHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd := hook.CommandTemplate
-	params := r.URL.Query()
-	missing := []string{}
+	query := r.URL.Query()
+	params := make(map[string]string)
 
-	for _, a := range hook.Args {
-		if a == "$app" {
-			cmd = strings.ReplaceAll(cmd, a, app)
-			continue
-		}
-
-		val := params.Get(a)
-		if val == "" {
-			missing = append(missing, a)
-			continue
-		}
-
-		cmd = strings.ReplaceAll(cmd, a, val)
+	params["$app"] = app
+	for k, _ := range query {
+		params[k] = query.Get(k)
 	}
 
-	if len(missing) > 0 {
-		m := strings.Join(missing, ", ")
-		http.Error(w, fmt.Sprintf("missing arguments: %s", m), 400)
+	cmd, err := hook.GetCmd(params)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
 		return
 	}
 
